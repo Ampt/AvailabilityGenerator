@@ -467,7 +467,7 @@
       /* ---------- Preview scaling control ---------- */
       .preview-controls {
         display: flex;
-        gap: 8px;
+        gap: 10px;
         align-items: center;
         margin-bottom: 12px;
         font-size: 12px;
@@ -475,11 +475,34 @@
       }
 
       .preview-controls input[type="range"] {
-        width: 140px;
+        flex: 1 1 auto;
+        min-width: 80px;
+        max-width: 200px;
+      }
+
+      .preview-controls .fit-btn {
+        background: white;
+        border: 1px solid #d9d2bb;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-family: inherit;
+        font-size: 12px;
+        color: #6a6244;
+        cursor: pointer;
+      }
+      .preview-controls .fit-btn:hover {
+        background: #faf6e3;
+        border-color: var(--gold);
       }
 
       .preview-column {
         width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+      }
+
+      .preview-wrap {
+        max-width: 100%;
       }
 
       /* Hidden render target used for high-quality export */
@@ -530,16 +553,17 @@
       <!-- ============= PREVIEW ============= -->
       <main class="preview-column">
         <div class="preview-controls">
-          <span>Preview size:</span>
+          <span>Zoom:</span>
           <input
             type="range"
             id="scale-slider"
-            min="0.25"
-            max="0.85"
-            step="0.05"
+            min="0.15"
+            max="1"
+            step="0.01"
             value="0.55"
           />
           <span id="scale-value">55%</span>
+          <button class="fit-btn" id="fit-btn" type="button">Fit</button>
         </div>
 
         <div class="preview-wrap">
@@ -802,8 +826,32 @@
         );
         scaleValue.textContent = `${Math.round(scale * 100)}%`;
       }
+
+      function getFitScale() {
+        const wrap = document.querySelector(".preview-wrap");
+        const available = (wrap ? wrap.clientWidth : window.innerWidth) - 8;
+        const min = parseFloat(scaleSlider.min);
+        const max = parseFloat(scaleSlider.max);
+        return Math.max(min, Math.min(max, available / 1080));
+      }
+
+      function fitToWidth() {
+        const scale = getFitScale();
+        scaleSlider.value = String(scale);
+        applyScale(scale);
+      }
+
       scaleSlider.addEventListener("input", (e) => {
         applyScale(parseFloat(e.target.value));
+      });
+
+      document.getElementById("fit-btn").addEventListener("click", fitToWidth);
+
+      // Re-fit on viewport size or orientation change.
+      let resizeT;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeT);
+        resizeT = setTimeout(fitToWidth, 100);
       });
 
       /* ---------- Download as PNG ----------
@@ -893,7 +941,7 @@
       populateStaff();
       renderSlotEditor();
       renderPoster();
-      applyScale(parseFloat(scaleSlider.value));
+      fitToWidth();
     </script>
   </body>
 </html>
