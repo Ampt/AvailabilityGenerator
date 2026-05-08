@@ -322,6 +322,11 @@
           system-ui,
           -apple-system,
           sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: geometricPrecision;
+        backface-visibility: hidden;
+        will-change: transform;
       }
 
       /* ---------- Poster content ---------- */
@@ -333,12 +338,15 @@
       }
 
       .poster .name-script {
-        font-family: "Allura", cursive;
+        font-family: "Allura", "Brush Script MT", cursive;
         font-size: 240px;
         line-height: 0.9;
         color: var(--gold-name);
         margin: 0;
         letter-spacing: -2px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: geometricPrecision;
       }
 
       .poster .availability-label {
