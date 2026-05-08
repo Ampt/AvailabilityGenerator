@@ -13,6 +13,7 @@
     />
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
     <style>
       /* ---------- Theme tokens (match Sunshine Healing aesthetic) ---------- */
@@ -138,28 +139,16 @@
           opacity 0.15s;
       }
 
-      .slot-row.dragging {
-        opacity: 0.4;
+      /* SortableJS classes */
+      .sortable-ghost {
+        opacity: 0.35;
+        background: #fbf6e0;
       }
-
-      /* Drop position indicators */
-      .slot-row.drop-above::before,
-      .slot-row.drop-below::after {
-        content: "";
-        position: absolute;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: var(--gold);
-        border-radius: 2px;
+      .sortable-chosen .drag-handle {
+        cursor: grabbing;
       }
-
-      .slot-row.drop-above::before {
-        top: -5px;
-      }
-
-      .slot-row.drop-below::after {
-        bottom: -5px;
+      .sortable-drag {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
       }
 
       .drag-handle {
@@ -170,14 +159,11 @@
         text-align: center;
         user-select: none;
         letter-spacing: -3px;
+        touch-action: none; /* let SortableJS own touch on this element */
       }
 
       .drag-handle:hover {
         color: var(--gold);
-      }
-
-      .slot-row.dragging .drag-handle {
-        cursor: grabbing;
       }
 
       .slot-row select,
@@ -579,13 +565,18 @@
       }
 
       /* ---------- Render slot editor rows ---------- */
+      let sortableInstance = null;
+
       function renderSlotEditor() {
+        if (sortableInstance) {
+          sortableInstance.destroy();
+          sortableInstance = null;
+        }
+
         slotsContainer.innerHTML = "";
         slots.forEach((slot, i) => {
           const row = document.createElement("div");
           row.className = "slot-row";
-          row.draggable = true;
-          row.dataset.index = String(i);
 
           const handle = document.createElement("div");
           handle.className = "drag-handle";
@@ -624,62 +615,29 @@
             renderPoster();
           });
 
-          // Drag-and-drop reordering
-          row.addEventListener("dragstart", (e) => {
-            row.classList.add("dragging");
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("text/plain", String(i));
-          });
-          row.addEventListener("dragend", () => {
-            row.classList.remove("dragging");
-            slotsContainer.querySelectorAll(".slot-row").forEach((r) => {
-              r.classList.remove("drop-above", "drop-below");
-            });
-          });
-          row.addEventListener("dragover", (e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-            const rect = row.getBoundingClientRect();
-            const above = e.clientY < rect.top + rect.height / 2;
-            row.classList.toggle("drop-above", above);
-            row.classList.toggle("drop-below", !above);
-          });
-          row.addEventListener("dragleave", () => {
-            row.classList.remove("drop-above", "drop-below");
-          });
-          row.addEventListener("drop", (e) => {
-            e.preventDefault();
-            row.classList.remove("drop-above", "drop-below");
-            const fromIndex = parseInt(
-              e.dataTransfer.getData("text/plain"),
-              10,
-            );
-            const toIndex = parseInt(row.dataset.index, 10);
-            if (
-              isNaN(fromIndex) ||
-              isNaN(toIndex) ||
-              fromIndex === toIndex
-            )
-              return;
-
-            const rect = row.getBoundingClientRect();
-            const dropAbove = e.clientY < rect.top + rect.height / 2;
-
-            const item = slots[fromIndex];
-            slots.splice(fromIndex, 1);
-            let insertAt = dropAbove ? toIndex : toIndex + 1;
-            if (fromIndex < toIndex) insertAt -= 1;
-            slots.splice(insertAt, 0, item);
-
-            renderSlotEditor();
-            renderPoster();
-          });
-
           row.appendChild(handle);
           row.appendChild(daySelect);
           row.appendChild(timeInput);
           row.appendChild(removeBtn);
           slotsContainer.appendChild(row);
+        });
+
+        // SortableJS handles both mouse and touch drag-to-reorder.
+        sortableInstance = new Sortable(slotsContainer, {
+          animation: 150,
+          handle: ".drag-handle",
+          ghostClass: "sortable-ghost",
+          chosenClass: "sortable-chosen",
+          dragClass: "sortable-drag",
+          forceFallback: true, // consistent behavior across desktop/mobile
+          fallbackTolerance: 4,
+          onEnd: (evt) => {
+            if (evt.oldIndex === evt.newIndex) return;
+            const item = slots.splice(evt.oldIndex, 1)[0];
+            slots.splice(evt.newIndex, 0, item);
+            renderSlotEditor();
+            renderPoster();
+          },
         });
       }
 
