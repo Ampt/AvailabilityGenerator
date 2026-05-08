@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Availability Poster Generator</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+      /* ---------- Theme tokens (match Sunshine Healing aesthetic) ---------- */
+      :root {
+        --cream: #f0e9d5;
+        --gold: #b5a063;
+        --gold-soft: #c8b683;
+        --gold-line: #d8c98e;
+        --ink: #2f2f2f;
+        --ink-soft: #4a4a4a;
+        --panel: #ffffff;
+        --panel-line: #e3dcc4;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        font-family:
+          "Inter",
+          system-ui,
+          -apple-system,
+          sans-serif;
+        color: var(--ink);
+        background: #faf6ea;
+      }
+
+      /* ---------- App layout ---------- */
+      .app {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 24px;
+        padding: 24px;
+        min-height: 100vh;
+      }
+
+      @media (max-width: 1100px) {
+        .app {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .controls {
+        background: white;
+        border: 1px solid #ece6d4;
+        border-radius: 12px;
+        padding: 20px;
+        height: fit-content;
+        position: sticky;
+        top: 24px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+
+      .controls h1 {
+        font-family: "Cormorant Garamond", serif;
+        font-weight: 500;
+        font-size: 24px;
+        margin: 0 0 4px 0;
+        color: var(--ink);
+      }
+
+      .controls .subtitle {
+        font-size: 13px;
+        color: #888;
+        margin: 0 0 20px 0;
+      }
+
+      .field {
+        margin-bottom: 18px;
+      }
+
+      .field label {
+        display: block;
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #777;
+        margin-bottom: 6px;
+      }
+
+      .field input[type="text"],
+      .field select {
+        width: 100%;
+        padding: 9px 10px;
+        border: 1px solid #d9d2bb;
+        border-radius: 6px;
+        background: white;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--ink);
+      }
+
+      .field input[type="text"]:focus,
+      .field select:focus {
+        outline: none;
+        border-color: var(--gold);
+        box-shadow: 0 0 0 2px rgba(181, 160, 99, 0.15);
+      }
+
+      .slot-row {
+        display: grid;
+        grid-template-columns: 100px 1fr 32px;
+        gap: 8px;
+        margin-bottom: 8px;
+        align-items: center;
+      }
+
+      .slot-row select,
+      .slot-row input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #d9d2bb;
+        border-radius: 6px;
+        background: white;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--ink);
+      }
+
+      .slot-row .remove-btn {
+        background: transparent;
+        border: 1px solid #e3dcc4;
+        border-radius: 6px;
+        height: 34px;
+        cursor: pointer;
+        color: #888;
+        font-size: 16px;
+        line-height: 1;
+        padding: 0;
+      }
+
+      .slot-row .remove-btn:hover {
+        background: #faf3d8;
+        color: #b85b3d;
+        border-color: #e6cfae;
+      }
+
+      .add-btn {
+        margin-top: 4px;
+        padding: 8px 14px;
+        background: transparent;
+        border: 1px dashed #c9bf9a;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 13px;
+        color: #7a6e3f;
+        width: 100%;
+      }
+
+      .add-btn:hover {
+        background: #faf6e6;
+        border-color: var(--gold);
+        color: var(--ink);
+      }
+
+      .download-btn {
+        margin-top: 22px;
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--gold);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .download-btn:hover {
+        background: #9c8950;
+      }
+
+      .download-btn:disabled {
+        background: #bdb693;
+        cursor: not-allowed;
+      }
+
+      /* ---------- Preview area ---------- */
+      .preview-wrap {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+      }
+
+      /* The poster is its true size (1080x1350); we visually scale it to fit */
+      .poster-frame {
+        width: calc(1080px * var(--preview-scale, 0.55));
+        height: calc(1350px * var(--preview-scale, 0.55));
+        position: relative;
+      }
+
+      .poster {
+        width: 1080px;
+        height: 1350px;
+        background: var(--cream);
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform-origin: top left;
+        transform: scale(var(--preview-scale, 0.55));
+        overflow: hidden;
+        font-family:
+          "Inter",
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+
+      /* ---------- Poster content ---------- */
+      .poster .heading {
+        position: absolute;
+        top: 60px;
+        left: -10px;
+        z-index: 1;
+      }
+
+      .poster .name-script {
+        font-family: "Allura", cursive;
+        font-size: 240px;
+        line-height: 0.9;
+        color: var(--gold);
+        margin: 0;
+        letter-spacing: -2px;
+      }
+
+      .poster .availability-label {
+        font-family: "Cormorant Garamond", serif;
+        font-size: 50px;
+        font-weight: 500;
+        color: var(--ink);
+        letter-spacing: 4px;
+        margin: -10px 0 0 30px;
+        text-transform: uppercase;
+      }
+
+      /* Appointment box, top-right */
+      .poster .appt-box {
+        position: absolute;
+        top: 170px;
+        right: 60px;
+        width: 600px;
+        background: white;
+        z-index: 3;
+        font-family: "Inter", sans-serif;
+      }
+
+      .poster .appt-header {
+        background: var(--gold);
+        color: white;
+        font-size: 28px;
+        font-weight: 500;
+        letter-spacing: 1.5px;
+        padding: 22px 30px;
+        text-transform: uppercase;
+      }
+
+      .poster .appt-list {
+        padding: 0 30px;
+      }
+
+      .poster .appt-row {
+        display: grid;
+        grid-template-columns: 110px 1px 1fr;
+        gap: 24px;
+        align-items: center;
+        padding: 22px 0;
+        border-bottom: 1px solid var(--gold-line);
+      }
+
+      .poster .appt-row:last-child {
+        border-bottom: none;
+      }
+
+      .poster .appt-day {
+        font-family: "Cormorant Garamond", serif;
+        font-size: 30px;
+        color: var(--ink);
+        font-weight: 500;
+      }
+
+      .poster .appt-divider {
+        background: var(--gold-soft);
+        width: 1px;
+        height: 28px;
+      }
+
+      .poster .appt-time {
+        font-family: "Inter", sans-serif;
+        font-size: 30px;
+        color: var(--ink);
+        font-weight: 400;
+      }
+
+      /* Photo block */
+      .poster .photo {
+        position: absolute;
+        left: 60px;
+        bottom: 90px;
+        width: 580px;
+        height: 760px;
+        background: #d8d3c2;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        z-index: 2;
+      }
+
+      .poster .photo-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #888;
+        font-size: 22px;
+        font-style: italic;
+        text-align: center;
+        padding: 20px;
+      }
+
+      /* Bottom-right brand */
+      .poster .brand {
+        position: absolute;
+        right: 60px;
+        bottom: 80px;
+        text-align: right;
+        font-family: "Inter", sans-serif;
+        font-size: 24px;
+        line-height: 1.45;
+        color: var(--ink);
+      }
+
+      /* ---------- Preview scaling control ---------- */
+      .preview-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+        font-size: 12px;
+        color: #888;
+      }
+
+      .preview-controls input[type="range"] {
+        width: 140px;
+      }
+
+      .preview-column {
+        width: 100%;
+      }
+
+      /* Hidden render target used for high-quality export */
+      .hidden-render {
+        position: fixed;
+        top: 0;
+        left: -10000px;
+        pointer-events: none;
+      }
+
+      .hidden-render .poster {
+        transform: none;
+        position: relative;
+      }
+
+      .download-status {
+        margin-top: 10px;
+        font-size: 12px;
+        color: #888;
+        text-align: center;
+        min-height: 16px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app">
+      <!-- ============= CONTROL PANEL ============= -->
+      <aside class="controls">
+        <h1>Availability Poster</h1>
+        <p class="subtitle">Sunshine Healing and Massage Therapy</p>
+
+        <div class="field">
+          <label for="staff-select">Staff member</label>
+          <select id="staff-select"></select>
+        </div>
+
+        <div class="field">
+          <label>Available appointment slots</label>
+          <div id="slots-container"></div>
+          <button class="add-btn" id="add-slot-btn">+ Add slot</button>
+        </div>
+
+        <button class="download-btn" id="download-btn">Download PNG</button>
+        <div class="download-status" id="download-status"></div>
+      </aside>
+
+      <!-- ============= PREVIEW ============= -->
+      <main class="preview-column">
+        <div class="preview-controls">
+          <span>Preview size:</span>
+          <input
+            type="range"
+            id="scale-slider"
+            min="0.25"
+            max="0.85"
+            step="0.05"
+            value="0.55"
+          />
+          <span id="scale-value">55%</span>
+        </div>
+
+        <div class="preview-wrap">
+          <div class="poster-frame" id="poster-frame">
+            <div class="poster" id="poster">
+              <div class="heading">
+                <h2 class="name-script" id="poster-name">Ashley</h2>
+                <div class="availability-label">Availability</div>
+              </div>
+
+              <div class="appt-box">
+                <div class="appt-header">Available Appointments</div>
+                <div class="appt-list" id="poster-slots">
+                  <!-- slot rows injected here -->
+                </div>
+              </div>
+
+              <div class="photo" id="poster-photo">
+                <div class="photo-placeholder" id="photo-placeholder">
+                  Add a photo to <code>photos/</code> and select the staff
+                  member
+                </div>
+              </div>
+
+              <div class="brand">
+                Sunshine Healing and<br />
+                Massage Therapy
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Off-screen render target used for high-quality PNG export -->
+    <div class="hidden-render" id="hidden-render" aria-hidden="true"></div>
+
+    <script>
+      /* =========================================================
+         STAFF CONFIG
+         Add or edit staff members here. Place photos in ./photos/.
+         Recommended photo dimensions: portrait, ~580x760 or larger.
+         ========================================================= */
+      const STAFF = [
+        { id: "ashley", name: "Ashley", photo: "photos/ashley.jpg" },
+        { id: "sadie", name: "Sadie", photo: "photos/sadie.jpg" },
+      ];
+
+      const DAYS = [
+        { value: "Mon", label: "Mon" },
+        { value: "Tues", label: "Tues" },
+        { value: "Wed", label: "Wed" },
+        { value: "Thurs", label: "Thurs" },
+        { value: "Fri", label: "Fri" },
+        { value: "Sat", label: "Sat" },
+        { value: "Sun", label: "Sun" },
+      ];
+
+      // Initial slots — will be replaced as you edit.
+      let slots = [
+        { day: "Wed", time: "12:30" },
+        { day: "Fri", time: "8:00" },
+      ];
+
+      let currentStaffId = STAFF[0].id;
+
+      /* ---------- DOM refs ---------- */
+      const staffSelect = document.getElementById("staff-select");
+      const slotsContainer = document.getElementById("slots-container");
+      const addSlotBtn = document.getElementById("add-slot-btn");
+      const downloadBtn = document.getElementById("download-btn");
+      const downloadStatus = document.getElementById("download-status");
+      const posterName = document.getElementById("poster-name");
+      const posterSlots = document.getElementById("poster-slots");
+      const posterPhoto = document.getElementById("poster-photo");
+      const photoPlaceholder = document.getElementById("photo-placeholder");
+      const posterFrame = document.getElementById("poster-frame");
+      const poster = document.getElementById("poster");
+      const scaleSlider = document.getElementById("scale-slider");
+      const scaleValue = document.getElementById("scale-value");
+      const hiddenRender = document.getElementById("hidden-render");
+
+      /* ---------- Init staff dropdown ---------- */
+      function populateStaff() {
+        staffSelect.innerHTML = "";
+        STAFF.forEach((s) => {
+          const opt = document.createElement("option");
+          opt.value = s.id;
+          opt.textContent = s.name;
+          staffSelect.appendChild(opt);
+        });
+        staffSelect.value = currentStaffId;
+      }
+
+      /* ---------- Render slot editor rows ---------- */
+      function renderSlotEditor() {
+        slotsContainer.innerHTML = "";
+        slots.forEach((slot, i) => {
+          const row = document.createElement("div");
+          row.className = "slot-row";
+
+          const daySelect = document.createElement("select");
+          DAYS.forEach((d) => {
+            const opt = document.createElement("option");
+            opt.value = d.value;
+            opt.textContent = d.label;
+            if (d.value === slot.day) opt.selected = true;
+            daySelect.appendChild(opt);
+          });
+          daySelect.addEventListener("change", (e) => {
+            slots[i].day = e.target.value;
+            renderPoster();
+          });
+
+          const timeInput = document.createElement("input");
+          timeInput.type = "text";
+          timeInput.placeholder = "e.g. 1:00 & 4:00";
+          timeInput.value = slot.time;
+          timeInput.addEventListener("input", (e) => {
+            slots[i].time = e.target.value;
+            renderPoster();
+          });
+
+          const removeBtn = document.createElement("button");
+          removeBtn.className = "remove-btn";
+          removeBtn.title = "Remove slot";
+          removeBtn.textContent = "×";
+          removeBtn.addEventListener("click", () => {
+            slots.splice(i, 1);
+            renderSlotEditor();
+            renderPoster();
+          });
+
+          row.appendChild(daySelect);
+          row.appendChild(timeInput);
+          row.appendChild(removeBtn);
+          slotsContainer.appendChild(row);
+        });
+      }
+
+      /* ---------- Render the poster preview ---------- */
+      function renderPoster() {
+        const staff = STAFF.find((s) => s.id === currentStaffId) || STAFF[0];
+
+        // Name + photo
+        posterName.textContent = staff.name;
+        applyPhoto(posterPhoto, photoPlaceholder, staff);
+
+        // Slots
+        posterSlots.innerHTML = "";
+        slots.forEach((slot) => {
+          const row = document.createElement("div");
+          row.className = "appt-row";
+          row.innerHTML = `
+            <div class="appt-day">${escapeHtml(slot.day)}</div>
+            <div class="appt-divider"></div>
+            <div class="appt-time">${escapeHtml(slot.time)}</div>
+          `;
+          posterSlots.appendChild(row);
+        });
+      }
+
+      function applyPhoto(photoEl, placeholderEl, staff) {
+        // Try the configured photo; if it fails, show placeholder.
+        const img = new Image();
+        img.onload = () => {
+          photoEl.style.backgroundImage = `url("${staff.photo}")`;
+          placeholderEl.style.display = "none";
+        };
+        img.onerror = () => {
+          photoEl.style.backgroundImage = "";
+          placeholderEl.style.display = "flex";
+          placeholderEl.textContent = `No photo found at ${staff.photo}`;
+        };
+        img.src = staff.photo;
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      /* ---------- Preview scale control ---------- */
+      function applyScale(scale) {
+        document.documentElement.style.setProperty(
+          "--preview-scale",
+          String(scale),
+        );
+        scaleValue.textContent = `${Math.round(scale * 100)}%`;
+      }
+      scaleSlider.addEventListener("input", (e) => {
+        applyScale(parseFloat(e.target.value));
+      });
+
+      /* ---------- Download as PNG ----------
+         We clone the poster into an off-screen container at its true 1080x1350
+         size (no CSS transform), capture with html2canvas at 2x, then download.
+      */
+      async function downloadPng() {
+        downloadStatus.textContent = "Rendering…";
+        downloadBtn.disabled = true;
+        try {
+          // Clone the poster element at its native dimensions.
+          hiddenRender.innerHTML = "";
+          const clone = poster.cloneNode(true);
+          // Remove the scaling transform on the clone.
+          clone.style.transform = "none";
+          clone.style.position = "relative";
+          hiddenRender.appendChild(clone);
+
+          // Wait one paint frame so fonts/layout settle.
+          await new Promise((r) => requestAnimationFrame(() => r()));
+          // Wait for fonts.
+          if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+          }
+
+          const canvas = await html2canvas(clone, {
+            backgroundColor: getComputedStyle(
+              document.documentElement,
+            ).getPropertyValue("--cream"),
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            width: 1080,
+            height: 1350,
+            windowWidth: 1080,
+            windowHeight: 1350,
+          });
+
+          const staff =
+            STAFF.find((s) => s.id === currentStaffId) || STAFF[0];
+          const filename = `${staff.name.toLowerCase()}-availability.png`;
+          canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            downloadStatus.textContent = `Saved ${filename}`;
+          });
+        } catch (err) {
+          console.error(err);
+          downloadStatus.textContent = "Render failed — see console.";
+        } finally {
+          hiddenRender.innerHTML = "";
+          downloadBtn.disabled = false;
+        }
+      }
+
+      /* ---------- Wire up ---------- */
+      staffSelect.addEventListener("change", (e) => {
+        currentStaffId = e.target.value;
+        renderPoster();
+      });
+
+      addSlotBtn.addEventListener("click", () => {
+        slots.push({ day: "Wed", time: "" });
+        renderSlotEditor();
+        renderPoster();
+      });
+
+      downloadBtn.addEventListener("click", downloadPng);
+
+      // Boot
+      populateStaff();
+      renderSlotEditor();
+      renderPoster();
+      applyScale(parseFloat(scaleSlider.value));
+    </script>
+  </body>
+</html>
