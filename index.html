@@ -324,9 +324,7 @@
           sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        text-rendering: geometricPrecision;
-        backface-visibility: hidden;
-        will-change: transform;
+        text-rendering: optimizeLegibility;
       }
 
       /* ---------- Poster content ---------- */
@@ -344,12 +342,14 @@
         color: var(--gold-name);
         margin: 0;
         letter-spacing: normal;
+        font-kerning: normal;
+        font-synthesis: none;
         font-feature-settings:
           "liga" 1,
           "dlig" 1,
           "calt" 1,
           "kern" 1;
-        font-variant-ligatures: common-ligatures contextual;
+        font-variant-ligatures: common-ligatures contextual discretionary-ligatures;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
