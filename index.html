@@ -127,31 +127,27 @@
 
       .slot-row {
         display: grid;
-        grid-template-columns: 18px 90px 1fr 32px;
-        gap: 8px;
-        margin-bottom: 8px;
-        align-items: center;
+        grid-template-columns: 32px 78px 1fr 26px 26px 30px;
+        gap: 6px;
+        margin-bottom: 10px;
+        align-items: stretch;
         background: white;
         border-radius: 6px;
         position: relative;
-        cursor: grab;
         transition:
           background 0.15s,
           opacity 0.15s;
+        min-height: 38px;
       }
 
-      .slot-row:active {
-        cursor: grabbing;
+      .slot-row > * {
+        align-self: center;
       }
 
       /* Form controls inside the row should use their normal cursors */
       .slot-row select,
-      .slot-row input,
-      .slot-row button {
-        cursor: auto;
-      }
-      .slot-row select,
-      .slot-row button {
+      .slot-row button.remove-btn,
+      .slot-row button.move-btn {
         cursor: pointer;
       }
       .slot-row input {
@@ -165,6 +161,8 @@
       }
       .sortable-chosen .drag-handle {
         cursor: grabbing;
+        background: #f0e9c8;
+        color: var(--gold);
       }
       .sortable-drag {
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
@@ -172,17 +170,27 @@
 
       .drag-handle {
         cursor: grab;
-        color: #b8b09a;
-        font-size: 14px;
-        line-height: 1;
-        text-align: center;
+        color: #a09877;
+        background: #faf6e3;
+        border: 1px solid #e3dcc4;
+        border-radius: 6px;
+        height: 100%;
+        min-height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         user-select: none;
-        letter-spacing: -3px;
-        touch-action: none; /* let SortableJS own touch on this element */
+        touch-action: none; /* SortableJS owns touch on this element */
       }
 
       .drag-handle:hover {
         color: var(--gold);
+        background: #f3ecc4;
+        border-color: var(--gold);
+      }
+
+      .drag-handle svg {
+        display: block;
       }
 
       .slot-row select,
@@ -213,6 +221,32 @@
         background: #faf3d8;
         color: #b85b3d;
         border-color: #e6cfae;
+      }
+
+      .slot-row .move-btn {
+        background: #faf6e3;
+        border: 1px solid #e3dcc4;
+        border-radius: 4px;
+        height: 30px;
+        cursor: pointer;
+        color: #7a6e3f;
+        font-size: 10px;
+        line-height: 1;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .slot-row .move-btn:hover:not(:disabled) {
+        background: #f3ecc4;
+        color: var(--ink);
+        border-color: var(--gold);
+      }
+
+      .slot-row .move-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
       }
 
       .add-btn {
@@ -600,7 +634,12 @@
           const handle = document.createElement("div");
           handle.className = "drag-handle";
           handle.title = "Drag to reorder";
-          handle.textContent = "⋮⋮";
+          handle.innerHTML = `
+            <svg width="14" height="22" viewBox="0 0 14 22" fill="currentColor" aria-hidden="true">
+              <circle cx="3" cy="4" r="1.6"/><circle cx="11" cy="4" r="1.6"/>
+              <circle cx="3" cy="11" r="1.6"/><circle cx="11" cy="11" r="1.6"/>
+              <circle cx="3" cy="18" r="1.6"/><circle cx="11" cy="18" r="1.6"/>
+            </svg>`;
 
           const daySelect = document.createElement("select");
           DAYS.forEach((d) => {
@@ -624,6 +663,30 @@
             renderPoster();
           });
 
+          const upBtn = document.createElement("button");
+          upBtn.className = "move-btn";
+          upBtn.title = "Move up";
+          upBtn.textContent = "▲";
+          upBtn.disabled = i === 0;
+          upBtn.addEventListener("click", () => {
+            if (i === 0) return;
+            [slots[i - 1], slots[i]] = [slots[i], slots[i - 1]];
+            renderSlotEditor();
+            renderPoster();
+          });
+
+          const downBtn = document.createElement("button");
+          downBtn.className = "move-btn";
+          downBtn.title = "Move down";
+          downBtn.textContent = "▼";
+          downBtn.disabled = i === slots.length - 1;
+          downBtn.addEventListener("click", () => {
+            if (i === slots.length - 1) return;
+            [slots[i], slots[i + 1]] = [slots[i + 1], slots[i]];
+            renderSlotEditor();
+            renderPoster();
+          });
+
           const removeBtn = document.createElement("button");
           removeBtn.className = "remove-btn";
           removeBtn.title = "Remove slot";
@@ -637,25 +700,22 @@
           row.appendChild(handle);
           row.appendChild(daySelect);
           row.appendChild(timeInput);
+          row.appendChild(upBtn);
+          row.appendChild(downBtn);
           row.appendChild(removeBtn);
           slotsContainer.appendChild(row);
         });
 
-        // SortableJS handles both mouse and touch drag-to-reorder.
-        // Whole row is grabbable; form controls are filtered so they still
-        // accept normal clicks/taps. On touch, a short hold is required so
-        // page scrolling still works.
+        // Drag is anchored on the grip handle (big obvious target). Up/down
+        // buttons cover the single-step case; drag covers longer moves.
         sortableInstance = new Sortable(slotsContainer, {
           animation: 150,
-          filter: "select, input, button",
-          preventOnFilter: false,
+          handle: ".drag-handle",
           ghostClass: "sortable-ghost",
           chosenClass: "sortable-chosen",
           dragClass: "sortable-drag",
           forceFallback: true,
           fallbackTolerance: 4,
-          delay: 150,
-          delayOnTouchOnly: true,
           onEnd: (evt) => {
             if (evt.oldIndex === evt.newIndex) return;
             const item = slots.splice(evt.oldIndex, 1)[0];
