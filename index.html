@@ -134,9 +134,28 @@
         background: white;
         border-radius: 6px;
         position: relative;
+        cursor: grab;
         transition:
           background 0.15s,
           opacity 0.15s;
+      }
+
+      .slot-row:active {
+        cursor: grabbing;
+      }
+
+      /* Form controls inside the row should use their normal cursors */
+      .slot-row select,
+      .slot-row input,
+      .slot-row button {
+        cursor: auto;
+      }
+      .slot-row select,
+      .slot-row button {
+        cursor: pointer;
+      }
+      .slot-row input {
+        cursor: text;
       }
 
       /* SortableJS classes */
@@ -623,14 +642,20 @@
         });
 
         // SortableJS handles both mouse and touch drag-to-reorder.
+        // Whole row is grabbable; form controls are filtered so they still
+        // accept normal clicks/taps. On touch, a short hold is required so
+        // page scrolling still works.
         sortableInstance = new Sortable(slotsContainer, {
           animation: 150,
-          handle: ".drag-handle",
+          filter: "select, input, button",
+          preventOnFilter: false,
           ghostClass: "sortable-ghost",
           chosenClass: "sortable-chosen",
           dragClass: "sortable-drag",
-          forceFallback: true, // consistent behavior across desktop/mobile
+          forceFallback: true,
           fallbackTolerance: 4,
+          delay: 150,
+          delayOnTouchOnly: true,
           onEnd: (evt) => {
             if (evt.oldIndex === evt.newIndex) return;
             const item = slots.splice(evt.oldIndex, 1)[0];
