@@ -343,10 +343,16 @@
         line-height: 0.9;
         color: var(--gold-name);
         margin: 0;
-        letter-spacing: -2px;
+        letter-spacing: normal;
+        font-feature-settings:
+          "liga" 1,
+          "dlig" 1,
+          "calt" 1,
+          "kern" 1;
+        font-variant-ligatures: common-ligatures contextual;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        text-rendering: geometricPrecision;
+        text-rendering: optimizeLegibility;
       }
 
       .poster .availability-label {
