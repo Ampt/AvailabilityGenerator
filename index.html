@@ -19,6 +19,7 @@
       :root {
         --cream: #f0e9d5;
         --gold: #b5a063;
+        --gold-name: #2f2f2f;
         --gold-soft: #c8b683;
         --gold-line: #d8c98e;
         --ink: #2f2f2f;
@@ -119,10 +120,58 @@
 
       .slot-row {
         display: grid;
-        grid-template-columns: 100px 1fr 32px;
+        grid-template-columns: 18px 90px 1fr 32px;
         gap: 8px;
         margin-bottom: 8px;
         align-items: center;
+        background: white;
+        border-radius: 6px;
+        position: relative;
+        transition:
+          background 0.15s,
+          opacity 0.15s;
+      }
+
+      .slot-row.dragging {
+        opacity: 0.4;
+      }
+
+      /* Drop position indicators */
+      .slot-row.drop-above::before,
+      .slot-row.drop-below::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--gold);
+        border-radius: 2px;
+      }
+
+      .slot-row.drop-above::before {
+        top: -5px;
+      }
+
+      .slot-row.drop-below::after {
+        bottom: -5px;
+      }
+
+      .drag-handle {
+        cursor: grab;
+        color: #b8b09a;
+        font-size: 14px;
+        line-height: 1;
+        text-align: center;
+        user-select: none;
+        letter-spacing: -3px;
+      }
+
+      .drag-handle:hover {
+        color: var(--gold);
+      }
+
+      .slot-row.dragging .drag-handle {
+        cursor: grabbing;
       }
 
       .slot-row select,
@@ -242,7 +291,7 @@
         font-family: "Allura", cursive;
         font-size: 240px;
         line-height: 0.9;
-        color: var(--gold);
+        color: var(--gold-name);
         margin: 0;
         letter-spacing: -2px;
       }
@@ -260,7 +309,7 @@
       /* Appointment box, top-right */
       .poster .appt-box {
         position: absolute;
-        top: 170px;
+        top: 240px;
         right: 60px;
         width: 600px;
         background: white;
@@ -473,8 +522,8 @@
          Recommended photo dimensions: portrait, ~580x760 or larger.
          ========================================================= */
       const STAFF = [
-        { id: "ashley", name: "Ashley", photo: "photos/ashley.jpg" },
-        { id: "sadie", name: "Sadie", photo: "photos/sadie.jpg" },
+        { id: "ashley", name: "Ashley", photo: "photos/ashley.png" },
+        { id: "sadie", name: "Sadie", photo: "photos/sadie.png" },
       ];
 
       const DAYS = [
@@ -529,6 +578,13 @@
         slots.forEach((slot, i) => {
           const row = document.createElement("div");
           row.className = "slot-row";
+          row.draggable = true;
+          row.dataset.index = String(i);
+
+          const handle = document.createElement("div");
+          handle.className = "drag-handle";
+          handle.title = "Drag to reorder";
+          handle.textContent = "⋮⋮";
 
           const daySelect = document.createElement("select");
           DAYS.forEach((d) => {
@@ -562,6 +618,58 @@
             renderPoster();
           });
 
+          // Drag-and-drop reordering
+          row.addEventListener("dragstart", (e) => {
+            row.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", String(i));
+          });
+          row.addEventListener("dragend", () => {
+            row.classList.remove("dragging");
+            slotsContainer.querySelectorAll(".slot-row").forEach((r) => {
+              r.classList.remove("drop-above", "drop-below");
+            });
+          });
+          row.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            const rect = row.getBoundingClientRect();
+            const above = e.clientY < rect.top + rect.height / 2;
+            row.classList.toggle("drop-above", above);
+            row.classList.toggle("drop-below", !above);
+          });
+          row.addEventListener("dragleave", () => {
+            row.classList.remove("drop-above", "drop-below");
+          });
+          row.addEventListener("drop", (e) => {
+            e.preventDefault();
+            row.classList.remove("drop-above", "drop-below");
+            const fromIndex = parseInt(
+              e.dataTransfer.getData("text/plain"),
+              10,
+            );
+            const toIndex = parseInt(row.dataset.index, 10);
+            if (
+              isNaN(fromIndex) ||
+              isNaN(toIndex) ||
+              fromIndex === toIndex
+            )
+              return;
+
+            const rect = row.getBoundingClientRect();
+            const dropAbove = e.clientY < rect.top + rect.height / 2;
+
+            const item = slots[fromIndex];
+            slots.splice(fromIndex, 1);
+            let insertAt = dropAbove ? toIndex : toIndex + 1;
+            if (fromIndex < toIndex) insertAt -= 1;
+            slots.splice(insertAt, 0, item);
+
+            renderSlotEditor();
+            renderPoster();
+          });
+
+          row.appendChild(handle);
           row.appendChild(daySelect);
           row.appendChild(timeInput);
           row.appendChild(removeBtn);
